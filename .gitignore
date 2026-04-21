@@ -1,0 +1,17 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+*.tfvars.local
+.terraform.lock.hcl
+crash.log
+
+# .NET
+**/bin/
+**/obj/
+*.user
+
+# Secrets
+*.pem
+*.key

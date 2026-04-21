@@ -1,0 +1,68 @@
+# Reusable template: builds a .NET API, pushes to ACR, deploys to AKS
+# Parameters:
+#   apiName       - e.g. api1
+#   projectPath   - relative path to the .csproj folder, e.g. src/Api1
+#   k8sManifest   - path to the K8s deployment yaml
+
+parameters:
+  - name: apiName
+    type: string
+  - name: projectPath
+    type: string
+  - name: k8sManifest
+    type: string
+
+stages:
+
+# ── Stage 1: Build & Push image to ACR ────────────────────────────────────────
+- stage: Build_${{ parameters.apiName }}
+  displayName: "Build & Push ${{ parameters.apiName }}"
+  jobs:
+    - job: BuildAndPush
+      displayName: "Docker build → ACR"
+      pool:
+        vmImage: ubuntu-latest
+      steps:
+        - task: Docker@2
+          displayName: "Build & push image"
+          inputs:
+            command: buildAndPush
+            containerRegistry: $(AZURE_CONTAINER_REGISTRY_SERVICE_CONNECTION)
+            repository: ${{ parameters.apiName }}
+            dockerfile: ${{ parameters.projectPath }}/Dockerfile
+            buildContext: ${{ parameters.projectPath }}
+            tags: |
+              $(Build.BuildId)
+              latest
+
+# ── Stage 2: Deploy to AKS ────────────────────────────────────────────────────
+- stage: Deploy_${{ parameters.apiName }}
+  displayName: "Deploy ${{ parameters.apiName }} to AKS"
+  dependsOn: Build_${{ parameters.apiName }}
+  condition: succeeded()
+  jobs:
+    - deployment: DeployToAKS
+      displayName: "kubectl apply"
+      environment: $(AKS_ENVIRONMENT_NAME)
+      pool:
+        vmImage: ubuntu-latest
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              # Replace image placeholder in manifest with real ACR + tag
+              - script: |
+                  sed -i "s|\$(ACR_LOGIN_SERVER)|$(ACR_LOGIN_SERVER)|g" ${{ parameters.k8sManifest }}
+                  sed -i "s|\$(IMAGE_TAG)|$(Build.BuildId)|g"           ${{ parameters.k8sManifest }}
+                displayName: "Substitute image variables in manifest"
+
+              - task: KubernetesManifest@1
+                displayName: "Apply K8s manifest"
+                inputs:
+                  action: deploy
+                  connectionType: azureResourceManager
+                  azureSubscriptionConnection: $(AZURE_SERVICE_CONNECTION)
+                  azureResourceGroup: $(AKS_RESOURCE_GROUP)
+                  kubernetesCluster: $(AKS_CLUSTER_NAME)
+                  namespace: apis
+                  manifests: ${{ parameters.k8sManifest }}

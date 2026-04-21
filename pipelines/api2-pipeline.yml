@@ -1,0 +1,28 @@
+# Azure DevOps Pipeline — Api2 (Orders Service)
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - src/Api2/**
+      - infra/k8s/api2-deployment.yaml
+
+pr:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - src/Api2/**
+
+variables:
+  - group: poc-common-vars
+
+stages:
+  - template: templates/build-push-deploy.yml
+    parameters:
+      apiName: api2
+      projectPath: src/Api2
+      k8sManifest: infra/k8s/api2-deployment.yaml
