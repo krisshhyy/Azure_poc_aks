@@ -88,6 +88,13 @@ resource "azurerm_role_assignment" "aks_acr_pull" {
   skip_service_principal_aad_check = true
 }
 
+# ─── Grant DevOps SP access to AKS ───────────────────────────────────────────
+resource "azurerm_role_assignment" "devops_aks_user" {
+  principal_id         = azuread_service_principal.devops.object_id
+  role_definition_name = "Azure Kubernetes Service Cluster User Role"
+  scope                = azurerm_kubernetes_cluster.main.id
+}
+
 # ─── Azure DevOps Service Connection SP ───────────────────────────────────────
 # This SP is used by Azure DevOps pipelines to push images to ACR
 resource "azurerm_role_assignment" "devops_acr_push" {
