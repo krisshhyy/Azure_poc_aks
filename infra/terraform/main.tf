@@ -76,6 +76,7 @@ resource "azurerm_kubernetes_cluster" "main" {
 
   # Disable expensive add-ons for trial
   http_application_routing_enabled = false
+  oidc_issuer_enabled              = true
 
   tags = local.tags
 }
