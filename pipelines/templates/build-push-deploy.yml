@@ -51,9 +51,12 @@ stages:
           deploy:
             steps:
               # Replace image placeholder in manifest with real ACR + tag
-              - script: |
-                  sed -i "s|\$(ACR_LOGIN_SERVER)|$(ACR_LOGIN_SERVER)|g" ${{ parameters.k8sManifest }}
-                  sed -i "s|\$(IMAGE_TAG)|$(Build.BuildId)|g"           ${{ parameters.k8sManifest }}
+              - powershell: |
+                  $manifest = "${{ parameters.k8sManifest }}"
+                  (Get-Content $manifest) `
+                    -replace '\$\(ACR_LOGIN_SERVER\)', "$(ACR_LOGIN_SERVER)" `
+                    -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" |
+                  Set-Content $manifest
                 displayName: "Substitute image variables in manifest"
 
               - task: KubernetesManifest@1
