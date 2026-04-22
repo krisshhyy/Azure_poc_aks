@@ -21,7 +21,7 @@ stages:
     - job: BuildAndPush
       displayName: "Docker build → ACR"
       pool:
-        vmImage: ubuntu-latest
+        name: mylocalpool
       steps:
         - task: Docker@2
           displayName: "Build & push image"
@@ -45,7 +45,7 @@ stages:
       displayName: "kubectl apply"
       environment: $(AKS_ENVIRONMENT_NAME)
       pool:
-        vmImage: ubuntu-latest
+        name: mylocalpool
       strategy:
         runOnce:
           deploy:
