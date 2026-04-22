@@ -77,10 +77,12 @@ Go to **Pipelines → Environments → New environment**
 - Resource: Kubernetes → select your AKS cluster → namespace `apis`
 
 ### 2d. Create Pipelines
-For each API, go to **Pipelines → New pipeline → Azure Repos Git → Existing YAML**:
+For each API, go to **Pipelines → New pipeline → GitHub → select your repo → Existing Azure Pipelines YAML file**:
 - `pipelines/api1-pipeline.yml`
 - `pipelines/api2-pipeline.yml`
 - `pipelines/api3-pipeline.yml`
+
+> First time you connect GitHub, Azure DevOps will ask you to authorize via OAuth or install the Azure Pipelines GitHub App — use the GitHub App option, it's more reliable.
 
 ---
 
