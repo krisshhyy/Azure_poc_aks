@@ -30,3 +30,12 @@ output "devops_sp_client_secret" {
   value       = azuread_service_principal_password.devops.value
   sensitive   = true
 }
+
+output "apim_gateway_url" {
+  description = "APIM gateway base URL — use this to call all APIs through APIM"
+  value       = azurerm_api_management.main.gateway_url
+}
+
+output "apim_name" {
+  value = azurerm_api_management.main.name
+}

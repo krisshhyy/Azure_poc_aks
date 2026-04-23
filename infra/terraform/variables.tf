@@ -33,3 +33,9 @@ variable "kubernetes_version" {
   type        = string
   default     = null
 }
+
+variable "aks_backend_base_url" {
+  description = "Base URL APIM uses to reach AKS services. Set this after AKS ingress/LoadBalancer IP is known."
+  type        = string
+  default     = "http://placeholder.replace.after.deploy"
+}

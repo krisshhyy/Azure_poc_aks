@@ -8,17 +8,21 @@ Replicates a real project setup where:
 
 ```
 infra/
-  terraform/       # All Azure resources (RG, VNet, ACR, AKS, SP)
+  terraform/       # All Azure resources (RG, VNet, ACR, AKS, SP, APIM)
   k8s/             # Kubernetes manifests per API
 pipelines/
   templates/       # Reusable build-push-deploy template
   api1-pipeline.yml
   api2-pipeline.yml
   api3-pipeline.yml
+  api4-pipeline.yml
+  api5-pipeline.yml
 src/
-  Api1/            # Products service  (GET /products)
-  Api2/            # Orders service    (GET /orders, POST /orders)
-  Api3/            # Notifications svc (GET /notifications, POST /notifications/send)
+  Api1/            # Products service      (GET /products)
+  Api2/            # Orders service        (GET /orders, POST /orders)
+  Api3/            # Notifications service (GET /notifications)
+  Api4/            # Users service         (fetches JSONPlaceholder /users, transforms)
+  Api5/            # Posts service         (fetches JSONPlaceholder /posts, transforms)
 ```
 
 ---
@@ -91,6 +95,115 @@ For each API, go to **Pipelines → New pipeline → GitHub → select your repo
 ```bash
 az aks get-credentials --resource-group rg-myproject-poc --name aks-myproject-poc
 kubectl apply -f infra/k8s/namespace.yaml
+```
+
+---
+
+## Step 4 — Wire APIM backends to AKS (Consumption tier workaround)
+
+Since Consumption tier has no VNet, APIM can't reach ClusterIP services directly.
+You need to expose the APIs via a LoadBalancer and update the backend URL in Terraform.
+
+### Option A — Single Nginx Ingress (recommended)
+
+```bash
+# Install nginx ingress controller
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.10.0/deploy/static/provider/cloud/deploy.yaml
+
+# Wait for external IP
+kubectl get svc -n ingress-nginx ingress-controller -w
+```
+
+Create `infra/k8s/ingress.yaml`:
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apis-ingress
+  namespace: apis
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api1(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service: { name: api1-svc, port: { number: 80 } }
+          - path: /api2(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service: { name: api2-svc, port: { number: 80 } }
+          - path: /api3(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service: { name: api3-svc, port: { number: 80 } }
+          - path: /api4(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service: { name: api4-svc, port: { number: 80 } }
+          - path: /api5(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service: { name: api5-svc, port: { number: 80 } }
+```
+
+```bash
+kubectl apply -f infra/k8s/ingress.yaml
+
+# Get the public IP
+kubectl get ingress -n apis
+```
+
+### Update Terraform with the ingress IP
+
+```hcl
+# terraform.tfvars
+aks_backend_base_url = "http://<INGRESS_PUBLIC_IP>"
+```
+
+```bash
+terraform apply
+```
+
+APIM will now route to `http://<IP>/api1`, `http://<IP>/api2` etc.
+
+---
+
+## Step 5 — Create Pipelines for Api4 and Api5
+
+Same as before in Azure DevOps:
+- `pipelines/api4-pipeline.yml`
+- `pipelines/api5-pipeline.yml`
+
+---
+
+## API Endpoints via APIM Gateway
+
+After `terraform output apim_gateway_url`:
+
+```bash
+APIM=https://apim-myproject-poc.azure-api.net
+
+# Products
+curl $APIM/products/products
+
+# Orders
+curl $APIM/orders/orders
+
+# Notifications
+curl $APIM/notifications/notifications
+
+# Users (transformed from JSONPlaceholder)
+curl $APIM/users/users
+curl $APIM/users/users/1
+
+# Posts (transformed from JSONPlaceholder)
+curl $APIM/posts/posts
+curl $APIM/posts/posts/1
+curl $APIM/posts/posts/1/comments
 ```
 
 ---

@@ -1,0 +1,31 @@
+# Azure DevOps Pipeline — Api4 (Users Service)
+# Fetches from JSONPlaceholder /users, transforms and exposes via APIM
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - src/Api4/**
+      - infra/k8s/api4-deployment.yaml
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - src/Api4/**
+
+variables:
+  - group: poc-common-vars
+
+stages:
+  - template: templates/build-push-deploy.yml
+    parameters:
+      apiName: api4
+      projectPath: src/Api4
+      k8sManifest: infra/k8s/api4-deployment.yaml

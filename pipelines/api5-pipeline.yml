@@ -1,0 +1,31 @@
+# Azure DevOps Pipeline — Api5 (Posts Service)
+# Fetches from JSONPlaceholder /posts, transforms and exposes via APIM
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - src/Api5/**
+      - infra/k8s/api5-deployment.yaml
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - src/Api5/**
+
+variables:
+  - group: poc-common-vars
+
+stages:
+  - template: templates/build-push-deploy.yml
+    parameters:
+      apiName: api5
+      projectPath: src/Api5
+      k8sManifest: infra/k8s/api5-deployment.yaml

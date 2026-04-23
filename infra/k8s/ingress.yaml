@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apis-ingress
+  namespace: apis
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - path: /api1(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api1-svc
+                port:
+                  number: 80
+          - path: /api2(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api2-svc
+                port:
+                  number: 80
+          - path: /api3(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api3-svc
+                port:
+                  number: 80
+          - path: /api4(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api4-svc
+                port:
+                  number: 80
+          - path: /api5(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: api5-svc
+                port:
+                  number: 80

@@ -81,6 +81,18 @@ resource "azurerm_kubernetes_cluster" "main" {
   tags = local.tags
 }
 
+# ─── Azure API Management (Consumption tier) ──────────────────────────────────
+resource "azurerm_api_management" "main" {
+  name                = "apim-${local.prefix}"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  publisher_name      = "MyOrganization"
+  publisher_email     = "admin@myorg.com"
+  sku_name            = "Consumption_0"  # Consumption tier - pay per use
+
+  tags = local.tags
+}
+
 # ─── Grant AKS pull access to ACR ─────────────────────────────────────────────
 resource "azurerm_role_assignment" "aks_acr_pull" {
   principal_id                     = azurerm_kubernetes_cluster.main.kubelet_identity[0].object_id
