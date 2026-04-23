@@ -39,12 +39,19 @@ stages:
         # Unit tests (only if a test project is provided)
         - ${{ if ne(parameters.testProject, '') }}:
           - task: DotNetCoreCLI@2
+            displayName: "dotnet restore"
+            inputs:
+              command: restore
+              projects: "${{ parameters.testProject }}"
+
+          - task: DotNetCoreCLI@2
             displayName: "dotnet test"
             inputs:
               command: test
               projects: "${{ parameters.testProject }}"
               arguments: >
                 --configuration Release
+                --no-restore
                 --collect:"XPlat Code Coverage"
                 --logger trx
                 --results-directory $(Agent.TempDirectory)/TestResults
