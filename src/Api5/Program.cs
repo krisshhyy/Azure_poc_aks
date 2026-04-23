@@ -50,3 +50,6 @@ app.MapGet("/posts/{id:int}/comments", async (int id, IHttpClientFactory factory
 });
 
 app.Run();
+
+// Required for WebApplicationFactory in integration tests
+public partial class Program { }

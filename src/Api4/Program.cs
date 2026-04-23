@@ -28,3 +28,6 @@ app.MapGet("/users/{id:int}", async (int id, IHttpClientFactory factory) =>
 });
 
 app.Run();
+
+// Required for WebApplicationFactory in integration tests
+public partial class Program { }

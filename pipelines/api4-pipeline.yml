@@ -33,4 +33,4 @@ stages:
       projectPath: src/Api4
       k8sManifest: infra/k8s/api4-deployment.yaml
       testProject: src/Api4.Tests/Api4.Tests.csproj
-      coverageThreshold: 30
+      coverageThreshold: 60
