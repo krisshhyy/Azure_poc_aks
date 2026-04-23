@@ -45,12 +45,9 @@ stages:
               command: restore
               projects: "${{ parameters.testProject }}"
 
-          - task: DotNetCoreCLI@2
+          - script: |
+              dotnet test "${{ parameters.testProject }}" --configuration Release --no-restore --collect:"XPlat Code Coverage" --logger "trx;LogFileName=results.trx" --results-directory "$(Agent.TempDirectory)/TestResults"
             displayName: "dotnet test"
-            inputs:
-              command: test
-              projects: "${{ parameters.testProject }}"
-              arguments: "--configuration Release --no-restore --collect:\"XPlat Code Coverage\" --logger trx --results-directory $(Agent.TempDirectory)/TestResults"
 
           # Publish test results to Azure DevOps (shows pass/fail in pipeline UI)
           - task: PublishTestResults@2
@@ -58,7 +55,7 @@ stages:
             condition: always()
             inputs:
               testResultsFormat: VSTest
-              testResultsFiles: "$(Agent.TempDirectory)/TestResults/**/*.trx"
+              testResultsFiles: "$(Agent.TempDirectory)/TestResults/results.trx"
               failTaskOnFailedTests: true
 
           # Publish code coverage
