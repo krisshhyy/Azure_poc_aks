@@ -48,8 +48,20 @@ stages:
               command: restore
               projects: "${{ parameters.testProject }}"
 
-          - script: |
-              dotnet test "${{ parameters.testProject }}" --configuration Release --no-restore --logger "trx;LogFileName=results.trx" --results-directory "$(Agent.TempDirectory)/TestResults" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput="$(Agent.TempDirectory)/TestResults/coverage.cobertura.xml"
+          - powershell: |
+              $testProject = "${{ parameters.testProject }}"
+              $trxDir = "$(Agent.TempDirectory)\TestResults"
+              $coverageFile = "$(Build.SourcesDirectory)\coverage.cobertura.xml"
+              New-Item -ItemType Directory -Force -Path $trxDir | Out-Null
+              dotnet test $testProject `
+                --configuration Release `
+                --no-restore `
+                --logger "trx;LogFileName=results.trx" `
+                --results-directory $trxDir `
+                /p:CollectCoverage=true `
+                /p:CoverletOutputFormat=cobertura `
+                /p:CoverletOutput=$coverageFile
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             displayName: "dotnet test"
 
           # Debug: show where coverage file landed
@@ -75,17 +87,17 @@ stages:
             displayName: "Publish code coverage"
             condition: always()
             inputs:
-              summaryFileLocation: "$(Agent.TempDirectory)/TestResults/**/coverage.cobertura.xml"
+              summaryFileLocation: "$(Build.SourcesDirectory)/coverage.cobertura.xml"
 
           # Fail the pipeline if coverage drops below threshold
           - powershell: |
               $threshold = ${{ parameters.coverageThreshold }}
-              $xmlFile = Get-ChildItem -Path "$(Agent.TempDirectory)/TestResults" -Filter "coverage.cobertura.xml" -Recurse | Select-Object -First 1
-              if (-not $xmlFile) {
-                Write-Warning "No coverage file found — skipping threshold check"
+              $xmlFile = "$(Build.SourcesDirectory)\coverage.cobertura.xml"
+              if (-not (Test-Path $xmlFile)) {
+                Write-Warning "No coverage file found at $xmlFile — skipping threshold check"
                 exit 0
               }
-              $xml = [xml](Get-Content $xmlFile.FullName)
+              $xml = [xml](Get-Content $xmlFile)
               $lineRate = [double]$xml.coverage.'line-rate'
               $pct = [math]::Round($lineRate * 100, 2)
               Write-Host "Code coverage: $pct%"
