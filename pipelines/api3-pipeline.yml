@@ -9,6 +9,7 @@ trigger:
     include:
       - src/Api3/**
       - infra/k8s/api3-deployment.yaml
+      - pipelines/templates/build-push-deploy.yml
 
 pr:
   branches:

@@ -10,6 +10,7 @@ trigger:
     include:
       - src/Api1/**
       - infra/k8s/api1-deployment.yaml
+      - pipelines/templates/build-push-deploy.yml
 
 pr:
   branches:

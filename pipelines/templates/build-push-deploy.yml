@@ -1,8 +1,9 @@
-# Reusable template: builds a .NET API, pushes to ACR, deploys to AKS
+# Reusable template: test → build → push to ACR → deploy to AKS
 # Parameters:
 #   apiName       - e.g. api1
 #   projectPath   - relative path to the .csproj folder, e.g. src/Api1
 #   k8sManifest   - path to the K8s deployment yaml
+#   testProject   - (optional) path to test project, e.g. src/Api1.Tests
 
 parameters:
   - name: apiName
@@ -11,12 +12,76 @@ parameters:
     type: string
   - name: k8sManifest
     type: string
+  - name: testProject
+    type: string
+    default: ""
 
 stages:
 
-# ── Stage 1: Build & Push image to ACR ────────────────────────────────────────
+# ── Stage 1: Test & Static Analysis ───────────────────────────────────────────
+- stage: Test_${{ parameters.apiName }}
+  displayName: "Test & Lint ${{ parameters.apiName }}"
+  jobs:
+    - job: RunTests
+      displayName: "Unit tests + format check"
+      pool:
+        name: mylocalpool
+      steps:
+        # Static analysis — dotnet format (fails if code style violations found)
+        - task: DotNetCoreCLI@2
+          displayName: "dotnet format (style check)"
+          inputs:
+            command: custom
+            custom: format
+            arguments: "${{ parameters.projectPath }} --verify-no-changes --severity warn"
+          continueOnError: true   # warn only — set to false to make it a hard gate
+
+        # Unit tests (only if a test project is provided)
+        - ${{ if ne(parameters.testProject, '') }}:
+          - task: DotNetCoreCLI@2
+            displayName: "dotnet test"
+            inputs:
+              command: test
+              projects: "${{ parameters.testProject }}"
+              arguments: >
+                --configuration Release
+                --collect:"XPlat Code Coverage"
+                --logger trx
+                --results-directory $(Agent.TempDirectory)/TestResults
+
+          # Publish test results to Azure DevOps (shows pass/fail in pipeline UI)
+          - task: PublishTestResults@2
+            displayName: "Publish test results"
+            condition: always()
+            inputs:
+              testResultsFormat: VSTest
+              testResultsFiles: "$(Agent.TempDirectory)/TestResults/**/*.trx"
+              failTaskOnFailedTests: true
+
+          # Publish code coverage
+          - task: PublishCodeCoverageResults@2
+            displayName: "Publish code coverage"
+            condition: always()
+            inputs:
+              summaryFileLocation: "$(Agent.TempDirectory)/TestResults/**/coverage.cobertura.xml"
+
+          # Fail the pipeline if coverage drops below threshold
+          - powershell: |
+              $xml = [xml](Get-Content (Get-ChildItem -Path "$(Agent.TempDirectory)/TestResults" -Filter "coverage.cobertura.xml" -Recurse | Select-Object -First 1).FullName)
+              $lineRate = [double]$xml.coverage.'line-rate'
+              $pct = [math]::Round($lineRate * 100, 2)
+              Write-Host "Code coverage: $pct%"
+              if ($pct -lt $(COVERAGE_THRESHOLD)) {
+                Write-Error "Coverage $pct% is below threshold of $(COVERAGE_THRESHOLD)%"
+                exit 1
+              }
+            displayName: "Enforce coverage threshold ($(COVERAGE_THRESHOLD)%)"
+
+# ── Stage 2: Build & Push image to ACR ────────────────────────────────────────
 - stage: Build_${{ parameters.apiName }}
   displayName: "Build & Push ${{ parameters.apiName }}"
+  dependsOn: Test_${{ parameters.apiName }}
+  condition: succeeded()
   jobs:
     - job: BuildAndPush
       displayName: "Docker build → ACR"
@@ -35,7 +100,7 @@ stages:
               $(Build.BuildId)
               latest
 
-# ── Stage 2: Deploy to AKS ────────────────────────────────────────────────────
+# ── Stage 3: Deploy to AKS ────────────────────────────────────────────────────
 - stage: Deploy_${{ parameters.apiName }}
   displayName: "Deploy ${{ parameters.apiName }} to AKS"
   dependsOn: Build_${{ parameters.apiName }}
@@ -50,7 +115,8 @@ stages:
         runOnce:
           deploy:
             steps:
-              # Replace image placeholder in manifest with real ACR + tag
+              - checkout: self
+
               - powershell: |
                   $manifest = "${{ parameters.k8sManifest }}"
                   (Get-Content $manifest) `

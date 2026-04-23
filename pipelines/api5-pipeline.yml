@@ -9,7 +9,9 @@ trigger:
   paths:
     include:
       - src/Api5/**
+      - src/Api5.Tests/**
       - infra/k8s/api5-deployment.yaml
+      - pipelines/templates/build-push-deploy.yml
 
 pr:
   branches:
@@ -19,6 +21,7 @@ pr:
   paths:
     include:
       - src/Api5/**
+      - src/Api5.Tests/**
 
 variables:
   - group: poc-common-vars
@@ -29,3 +32,4 @@ stages:
       apiName: api5
       projectPath: src/Api5
       k8sManifest: infra/k8s/api5-deployment.yaml
+      testProject: src/Api5.Tests/Api5.Tests.csproj

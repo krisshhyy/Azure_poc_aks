@@ -9,7 +9,9 @@ trigger:
   paths:
     include:
       - src/Api4/**
+      - src/Api4.Tests/**
       - infra/k8s/api4-deployment.yaml
+      - pipelines/templates/build-push-deploy.yml
 
 pr:
   branches:
@@ -19,6 +21,7 @@ pr:
   paths:
     include:
       - src/Api4/**
+      - src/Api4.Tests/**
 
 variables:
   - group: poc-common-vars
@@ -29,3 +32,4 @@ stages:
       apiName: api4
       projectPath: src/Api4
       k8sManifest: infra/k8s/api4-deployment.yaml
+      testProject: src/Api4.Tests/Api4.Tests.csproj
