@@ -20,14 +20,6 @@ pr:
     include:
       - src/Api1/**
 
-# ── Pipeline-level variables ───────────────────────────────────────────────────
-# Set these in Azure DevOps Library or pipeline variables UI:
-#   ACR_LOGIN_SERVER                    e.g. acrmyprojectpoc001.azurecr.io
-#   AZURE_CONTAINER_REGISTRY_SERVICE_CONNECTION  name of the ACR service connection
-#   AZURE_SERVICE_CONNECTION            name of the ARM service connection
-#   AKS_RESOURCE_GROUP                  e.g. rg-myproject-poc
-#   AKS_CLUSTER_NAME                    e.g. aks-myproject-poc
-#   AKS_ENVIRONMENT_NAME                Azure DevOps Environment name (e.g. aks-poc)
 
 variables:
   - group: poc-common-vars   # variable group defined in Azure DevOps Library
