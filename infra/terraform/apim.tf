@@ -1,29 +1,33 @@
 # ─── APIM API Registrations ───────────────────────────────────────────────────
-# All 5 APIs registered in APIM. Backends point to AKS ClusterIP services.
-# In Consumption tier these are public — in real project they'd be private VNet URLs.
 
 locals {
-  # In real project: http://api1-svc.apis.svc.cluster.local
-  # For POC with Consumption (no VNet): use the AKS public IP via ingress
-  # We use a variable so it's easy to swap
   aks_backend_base = var.aks_backend_base_url
 }
 
+# ── Helper: wildcard operation template ───────────────────────────────────────
+# Each API needs at least one operation. We use a catch-all wildcard so APIM
+# forwards all paths/methods to the backend without defining each route.
+
 # ── Api1 — Products ────────────────────────────────────────────────────────────
 resource "azurerm_api_management_api" "api1" {
-  name                = "products-api"
-  resource_group_name = azurerm_resource_group.main.name
-  api_management_name = azurerm_api_management.main.name
-  revision            = "1"
-  display_name        = "Products API"
-  path                = "products"
-  protocols           = ["https"]
+  name                  = "products-api"
+  resource_group_name   = azurerm_resource_group.main.name
+  api_management_name   = azurerm_api_management.main.name
+  revision              = "1"
+  display_name          = "Products API"
+  path                  = "products"
+  protocols             = ["https"]
   subscription_required = false
+}
 
-  import {
-    content_format = "openapi+json-link"
-    content_value  = "https://petstore3.swagger.io/api/v3/openapi.json"  # placeholder, overridden by policy
-  }
+resource "azurerm_api_management_api_operation" "api1_all" {
+  operation_id        = "all"
+  api_name            = azurerm_api_management_api.api1.name
+  api_management_name = azurerm_api_management.main.name
+  resource_group_name = azurerm_resource_group.main.name
+  display_name        = "All operations"
+  method              = "GET"
+  url_template        = "/*"
 }
 
 resource "azurerm_api_management_backend" "api1" {
@@ -55,14 +59,24 @@ XML
 
 # ── Api2 — Orders ──────────────────────────────────────────────────────────────
 resource "azurerm_api_management_api" "api2" {
-  name                = "orders-api"
-  resource_group_name = azurerm_resource_group.main.name
-  api_management_name = azurerm_api_management.main.name
-  revision            = "1"
-  display_name        = "Orders API"
-  path                = "orders"
-  protocols           = ["https"]
+  name                  = "orders-api"
+  resource_group_name   = azurerm_resource_group.main.name
+  api_management_name   = azurerm_api_management.main.name
+  revision              = "1"
+  display_name          = "Orders API"
+  path                  = "orders"
+  protocols             = ["https"]
   subscription_required = false
+}
+
+resource "azurerm_api_management_api_operation" "api2_all" {
+  operation_id        = "all"
+  api_name            = azurerm_api_management_api.api2.name
+  api_management_name = azurerm_api_management.main.name
+  resource_group_name = azurerm_resource_group.main.name
+  display_name        = "All operations"
+  method              = "GET"
+  url_template        = "/*"
 }
 
 resource "azurerm_api_management_backend" "api2" {
@@ -94,14 +108,24 @@ XML
 
 # ── Api3 — Notifications ───────────────────────────────────────────────────────
 resource "azurerm_api_management_api" "api3" {
-  name                = "notifications-api"
-  resource_group_name = azurerm_resource_group.main.name
-  api_management_name = azurerm_api_management.main.name
-  revision            = "1"
-  display_name        = "Notifications API"
-  path                = "notifications"
-  protocols           = ["https"]
+  name                  = "notifications-api"
+  resource_group_name   = azurerm_resource_group.main.name
+  api_management_name   = azurerm_api_management.main.name
+  revision              = "1"
+  display_name          = "Notifications API"
+  path                  = "notifications"
+  protocols             = ["https"]
   subscription_required = false
+}
+
+resource "azurerm_api_management_api_operation" "api3_all" {
+  operation_id        = "all"
+  api_name            = azurerm_api_management_api.api3.name
+  api_management_name = azurerm_api_management.main.name
+  resource_group_name = azurerm_resource_group.main.name
+  display_name        = "All operations"
+  method              = "GET"
+  url_template        = "/*"
 }
 
 resource "azurerm_api_management_backend" "api3" {
@@ -131,16 +155,26 @@ resource "azurerm_api_management_api_policy" "api3" {
 XML
 }
 
-# ── Api4 — Users (calls JSONPlaceholder, transforms response) ──────────────────
+# ── Api4 — Users ───────────────────────────────────────────────────────────────
 resource "azurerm_api_management_api" "api4" {
-  name                = "users-api"
-  resource_group_name = azurerm_resource_group.main.name
-  api_management_name = azurerm_api_management.main.name
-  revision            = "1"
-  display_name        = "Users API"
-  path                = "users"
-  protocols           = ["https"]
+  name                  = "users-api"
+  resource_group_name   = azurerm_resource_group.main.name
+  api_management_name   = azurerm_api_management.main.name
+  revision              = "1"
+  display_name          = "Users API"
+  path                  = "users"
+  protocols             = ["https"]
   subscription_required = false
+}
+
+resource "azurerm_api_management_api_operation" "api4_all" {
+  operation_id        = "all"
+  api_name            = azurerm_api_management_api.api4.name
+  api_management_name = azurerm_api_management.main.name
+  resource_group_name = azurerm_resource_group.main.name
+  display_name        = "All operations"
+  method              = "GET"
+  url_template        = "/*"
 }
 
 resource "azurerm_api_management_backend" "api4" {
@@ -176,16 +210,26 @@ resource "azurerm_api_management_api_policy" "api4" {
 XML
 }
 
-# ── Api5 — Posts (calls JSONPlaceholder, transforms response) ──────────────────
+# ── Api5 — Posts ───────────────────────────────────────────────────────────────
 resource "azurerm_api_management_api" "api5" {
-  name                = "posts-api"
-  resource_group_name = azurerm_resource_group.main.name
-  api_management_name = azurerm_api_management.main.name
-  revision            = "1"
-  display_name        = "Posts API"
-  path                = "posts"
-  protocols           = ["https"]
+  name                  = "posts-api"
+  resource_group_name   = azurerm_resource_group.main.name
+  api_management_name   = azurerm_api_management.main.name
+  revision              = "1"
+  display_name          = "Posts API"
+  path                  = "posts"
+  protocols             = ["https"]
   subscription_required = false
+}
+
+resource "azurerm_api_management_api_operation" "api5_all" {
+  operation_id        = "all"
+  api_name            = azurerm_api_management_api.api5.name
+  api_management_name = azurerm_api_management.main.name
+  resource_group_name = azurerm_resource_group.main.name
+  display_name        = "All operations"
+  method              = "GET"
+  url_template        = "/*"
 }
 
 resource "azurerm_api_management_backend" "api5" {
