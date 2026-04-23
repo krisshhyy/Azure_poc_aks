@@ -51,6 +51,16 @@ stages:
           - script: |
               dotnet test "${{ parameters.testProject }}" --configuration Release --no-restore --logger "trx;LogFileName=results.trx" --results-directory "$(Agent.TempDirectory)/TestResults" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput="$(Agent.TempDirectory)/TestResults/coverage.cobertura.xml"
             displayName: "dotnet test"
+
+          # Debug: show where coverage file landed
+          - powershell: |
+              Write-Host "=== Searching for coverage files ==="
+              Get-ChildItem -Path "$(Agent.TempDirectory)" -Filter "*.xml" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+              Get-ChildItem -Path "$(Build.SourcesDirectory)" -Filter "*.xml" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+              Write-Host "=== Searching for .trx files ==="
+              Get-ChildItem -Path "$(Agent.TempDirectory)" -Filter "*.trx" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Write-Host $_.FullName }
+            displayName: "Debug: find coverage files"
+            condition: always()
           # Publish test results to Azure DevOps (shows pass/fail in pipeline UI)
           - task: PublishTestResults@2
             displayName: "Publish test results"
