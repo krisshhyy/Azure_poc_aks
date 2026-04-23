@@ -1,6 +1,8 @@
 // Unit tests for Api4 transformation logic
 // These test the pure functions that shape the JSONPlaceholder response
 
+using Xunit;
+
 namespace Api4.Tests;
 
 public class TransformationTests

@@ -27,14 +27,15 @@ stages:
       pool:
         name: mylocalpool
       steps:
-        # Static analysis — dotnet format (fails if code style violations found)
-        - task: DotNetCoreCLI@2
-          displayName: "dotnet format (style check)"
-          inputs:
-            command: custom
-            custom: format
-            arguments: "${{ parameters.projectPath }} --verify-no-changes --severity warn"
-          continueOnError: true   # warn only — set to false to make it a hard gate
+        # Static analysis — dotnet format
+        # To enable: replace projectPath with full .csproj path e.g. src/Api5/Api5.csproj
+        # - task: DotNetCoreCLI@2
+        #   displayName: "dotnet format (style check)"
+        #   inputs:
+        #     command: custom
+        #     custom: format
+        #     arguments: "${{ parameters.projectPath }}/${{ parameters.apiName }}.csproj --verify-no-changes --severity warn"
+        #   continueOnError: true
 
         # Unit tests (only if a test project is provided)
         - ${{ if ne(parameters.testProject, '') }}:
