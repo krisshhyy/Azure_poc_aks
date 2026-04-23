@@ -33,7 +33,24 @@ app.MapGet("/posts/{id:int}", async (int id, IHttpClientFactory factory) =>
     var p = await client.GetFromJsonAsync<JsonPlaceholderPost>($"/posts/{id}");
 
     if (p is null) return Results.NotFound();
-    return Results.Ok(Transform(p));
+
+    // Custom override for post 4
+    var transformed = Transform(p);
+    if (id == 4)
+    {
+        return Results.Ok(new
+        {
+            id          = p.Id,
+            userId      = p.UserId,
+            title       = "nandi custom change",
+            summary     = p.Body.Length > 100 ? p.Body[..100] + "..." : p.Body,
+            wordCount   = p.Body.Split(' ').Length,
+            readTimeSec = (int)Math.Ceiling(p.Body.Split(' ').Length / 3.0),
+            postUrl     = $"https://myapp.com/posts/{p.Id}"
+        });
+    }
+
+    return Results.Ok(transformed);
 });
 
 // GET /posts/{id}/comments — fetch comments for a post
