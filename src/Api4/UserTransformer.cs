@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Api4;
 
 public static class UserTransformer
@@ -33,15 +35,6 @@ public static class UserTransformer
         $"https://myapp.com/users/{userId}";
 }
 
-public record JsonPlaceholderUser(
-    int     Id,
-    string  Name,
-    string  Username,
-    string  Email,
-    string  Phone,
-    string  Website,
-    Address Address,
-    Company Company
-);
-public record Address(string Street, string Suite, string City, string Zipcode);
-public record Company(string Name, string CatchPhrase, string Bs);
+[ExcludeFromCodeCoverage] public record JsonPlaceholderUser(int Id, string Name, string Username, string Email, string Phone, string Website, Address Address, Company Company);
+[ExcludeFromCodeCoverage] public record Address(string Street, string Suite, string City, string Zipcode);
+[ExcludeFromCodeCoverage] public record Company(string Name, string CatchPhrase, string Bs);

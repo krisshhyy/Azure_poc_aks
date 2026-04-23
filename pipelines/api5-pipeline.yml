@@ -33,3 +33,4 @@ stages:
       projectPath: src/Api5
       k8sManifest: infra/k8s/api5-deployment.yaml
       testProject: src/Api5.Tests/Api5.Tests.csproj
+      coverageThreshold: 30

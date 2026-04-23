@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Api5;
 
 public static class PostTransformer
@@ -47,5 +49,5 @@ public static class PostTransformer
     }
 }
 
-public record JsonPlaceholderPost(int UserId, int Id, string Title, string Body);
-public record JsonPlaceholderComment(int PostId, int Id, string Name, string Email, string Body);
+[ExcludeFromCodeCoverage] public record JsonPlaceholderPost(int UserId, int Id, string Title, string Body);
+[ExcludeFromCodeCoverage] public record JsonPlaceholderComment(int PostId, int Id, string Name, string Email, string Body);

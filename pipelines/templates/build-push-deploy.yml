@@ -60,7 +60,8 @@ stages:
                 --results-directory $trxDir `
                 /p:CollectCoverage=true `
                 /p:CoverletOutputFormat=cobertura `
-                /p:CoverletOutput=$coverageFile
+                /p:CoverletOutput=$coverageFile `
+                /p:Exclude="[*]*.Program%2C[*]*JsonPlaceholder*%2C[*]*Address%2C[*]*Company"
               if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             displayName: "dotnet test"
 
