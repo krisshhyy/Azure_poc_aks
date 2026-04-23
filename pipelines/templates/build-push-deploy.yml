@@ -15,6 +15,9 @@ parameters:
   - name: testProject
     type: string
     default: ""
+  - name: coverageThreshold
+    type: number
+    default: 60
 
 stages:
 
@@ -67,7 +70,7 @@ stages:
 
           # Fail the pipeline if coverage drops below threshold
           - powershell: |
-              $threshold = [int]$env:COVERAGE_THRESHOLD
+              $threshold = ${{ parameters.coverageThreshold }}
               $xmlFile = Get-ChildItem -Path "$(Agent.TempDirectory)/TestResults" -Filter "coverage.cobertura.xml" -Recurse | Select-Object -First 1
               if (-not $xmlFile) {
                 Write-Warning "No coverage file found — skipping threshold check"
@@ -83,9 +86,7 @@ stages:
                 exit 1
               }
               Write-Host "Coverage check passed."
-            displayName: "Enforce coverage threshold"
-            env:
-              COVERAGE_THRESHOLD: $(COVERAGE_THRESHOLD)
+            displayName: "Enforce coverage threshold (${{ parameters.coverageThreshold }}%)"
 
 # ── Stage 2: Build & Push image to ACR ────────────────────────────────────────
 - stage: Build_${{ parameters.apiName }}
