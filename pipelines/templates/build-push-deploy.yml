@@ -49,9 +49,8 @@ stages:
               projects: "${{ parameters.testProject }}"
 
           - script: |
-              dotnet test "${{ parameters.testProject }}" --configuration Release --no-restore --collect:"XPlat Code Coverage" --logger "trx;LogFileName=results.trx" --results-directory "$(Agent.TempDirectory)/TestResults"
+              dotnet test "${{ parameters.testProject }}" --configuration Release --no-restore --logger "trx;LogFileName=results.trx" --results-directory "$(Agent.TempDirectory)/TestResults" /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput="$(Agent.TempDirectory)/TestResults/coverage.cobertura.xml"
             displayName: "dotnet test"
-
           # Publish test results to Azure DevOps (shows pass/fail in pipeline UI)
           - task: PublishTestResults@2
             displayName: "Publish test results"
