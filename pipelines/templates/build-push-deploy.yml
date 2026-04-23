@@ -50,12 +50,7 @@ stages:
             inputs:
               command: test
               projects: "${{ parameters.testProject }}"
-              arguments: >
-                --configuration Release
-                --no-restore
-                --collect:"XPlat Code Coverage"
-                --logger trx
-                --results-directory $(Agent.TempDirectory)/TestResults
+              arguments: "--configuration Release --no-restore --collect:\"XPlat Code Coverage\" --logger trx --results-directory $(Agent.TempDirectory)/TestResults"
 
           # Publish test results to Azure DevOps (shows pass/fail in pipeline UI)
           - task: PublishTestResults@2
