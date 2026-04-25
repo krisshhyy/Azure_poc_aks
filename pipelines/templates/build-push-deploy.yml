@@ -1,10 +1,8 @@
 # Reusable template: test → build → push to ACR → deploy to dev/test/prod based on branch
-# Parameters:
-#   apiName           - e.g. api1
-#   projectPath       - relative path to the .csproj folder, e.g. src/Api1
-#   k8sManifest       - path to the K8s deployment yaml
-#   testProject       - (optional) path to test project
-#   coverageThreshold - (optional) minimum coverage %, default 60
+# Branch mapping:
+#   develop → deploys to 'dev' namespace   (environment: aks-dev)
+#   test    → deploys to 'test' namespace  (environment: aks-test)
+#   main    → deploys to 'prod' namespace  (environment: aks-prod, requires approval)
 
 parameters:
   - name: apiName
@@ -20,23 +18,6 @@ parameters:
     type: number
     default: 60
 
-# Resolve target environment from branch name
-variables:
-  - name: targetNamespace
-    ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
-      value: prod
-    ${{ elseif eq(variables['Build.SourceBranchName'], 'test') }}:
-      value: test
-    ${{ else }}:
-      value: dev
-  - name: environmentName
-    ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
-      value: "aks-prod"
-    ${{ elseif eq(variables['Build.SourceBranchName'], 'test') }}:
-      value: "aks-test"
-    ${{ else }}:
-      value: "aks-dev"
-
 stages:
 
 # ── Stage 1: Test & Static Analysis ───────────────────────────────────────────
@@ -48,16 +29,6 @@ stages:
       pool:
         name: mylocalpool
       steps:
-        # Static analysis — dotnet format
-        # - task: DotNetCoreCLI@2
-        #   displayName: "dotnet format (style check)"
-        #   inputs:
-        #     command: custom
-        #     custom: format
-        #     arguments: "${{ parameters.projectPath }}/${{ parameters.apiName }}.csproj --verify-no-changes --severity warn"
-        #   continueOnError: true
-
-        # Unit tests (only if a test project is provided)
         - ${{ if ne(parameters.testProject, '') }}:
           - task: DotNetCoreCLI@2
             displayName: "dotnet restore"
@@ -100,7 +71,7 @@ stages:
               $threshold = ${{ parameters.coverageThreshold }}
               $xmlFile = "$(Build.SourcesDirectory)\coverage.cobertura.xml"
               if (-not (Test-Path $xmlFile)) {
-                Write-Warning "No coverage file found — skipping threshold check"
+                Write-Warning "No coverage file found — skipping"
                 exit 0
               }
               $xml = [xml](Get-Content $xmlFile)
@@ -138,7 +109,7 @@ stages:
               $(Build.BuildId)
               latest
 
-# ── Stage 3: Deploy to Dev ────────────────────────────────────────────────────
+# ── Stage 3: Deploy to Dev (develop branch only) ──────────────────────────────
 - stage: Deploy_Dev_${{ parameters.apiName }}
   displayName: "🚀 Deploy to DEV [${{ parameters.apiName }}]"
   dependsOn: Build_${{ parameters.apiName }}
@@ -172,7 +143,7 @@ stages:
                   namespace: dev
                   manifests: ${{ parameters.k8sManifest }}
 
-# ── Stage 4: Deploy to Test ───────────────────────────────────────────────────
+# ── Stage 4: Deploy to Test (test branch only) ────────────────────────────────
 - stage: Deploy_Test_${{ parameters.apiName }}
   displayName: "🧪 Deploy to TEST [${{ parameters.apiName }}]"
   dependsOn: Build_${{ parameters.apiName }}
@@ -206,7 +177,7 @@ stages:
                   namespace: test
                   manifests: ${{ parameters.k8sManifest }}
 
-# ── Stage 5: Deploy to Prod ───────────────────────────────────────────────────
+# ── Stage 5: Deploy to Prod (main branch only, requires approval) ─────────────
 - stage: Deploy_Prod_${{ parameters.apiName }}
   displayName: "🏭 Deploy to PROD [${{ parameters.apiName }}]"
   dependsOn: Build_${{ parameters.apiName }}
@@ -214,7 +185,7 @@ stages:
   jobs:
     - deployment: DeployToProd
       displayName: "Deploy → prod namespace"
-      environment: aks-prod        # add approval gate on this environment in Azure DevOps
+      environment: aks-prod
       pool:
         name: mylocalpool
       strategy:
