@@ -3,7 +3,7 @@ builder.Services.AddEndpointsApiExplorer();
 
 var app = builder.Build();
 
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Api3", version = "1.1.0" }));
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Api3", version = "1.3.0" }));
 
 // Sample domain endpoint — Notifications service
 app.MapGet("/notifications", () => Results.Ok(new[]

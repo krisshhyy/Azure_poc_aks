@@ -4,7 +4,7 @@ builder.Services.AddEndpointsApiExplorer();
 var app = builder.Build();
 
 // Health check endpoint — used by K8s readiness probe
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Api1", version = "1.1.0" }));
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Api1", version = "1.3.0" }));
 
 // Sample domain endpoint
 app.MapGet("/products", () => Results.Ok(new[]

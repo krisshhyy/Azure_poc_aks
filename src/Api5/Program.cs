@@ -9,7 +9,7 @@ builder.Services.AddHttpClient("jsonplaceholder", c =>
 
 var app = builder.Build();
 
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Api5", version = "1.2.0" }));
+app.MapGet("/health", () => Results.Ok(new { status = "healthy", service = "Api5", version = "1.3.0" }));
 
 app.MapGet("/posts", async (IHttpClientFactory factory, int? userId) =>
 {
