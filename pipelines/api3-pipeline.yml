@@ -5,6 +5,7 @@ trigger:
     include:
       - main
       - develop
+      - test
   paths:
     include:
       - src/Api3/**
@@ -16,6 +17,7 @@ pr:
     include:
       - main
       - develop
+      - test
   paths:
     include:
       - src/Api3/**
