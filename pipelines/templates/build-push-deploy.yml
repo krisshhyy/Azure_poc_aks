@@ -129,7 +129,8 @@ stages:
                   $manifest = "${{ parameters.k8sManifest }}"
                   (Get-Content $manifest) `
                     -replace '\$\(ACR_LOGIN_SERVER\)', "$(ACR_LOGIN_SERVER)" `
-                    -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" |
+                    -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" `
+                    -replace 'namespace: apis',        "namespace: dev" |
                   Set-Content $manifest
                 displayName: "Substitute image variables"
               - task: KubernetesManifest@1
@@ -163,7 +164,8 @@ stages:
                   $manifest = "${{ parameters.k8sManifest }}"
                   (Get-Content $manifest) `
                     -replace '\$\(ACR_LOGIN_SERVER\)', "$(ACR_LOGIN_SERVER)" `
-                    -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" |
+                    -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" `
+                    -replace 'namespace: apis',        "namespace: test" |
                   Set-Content $manifest
                 displayName: "Substitute image variables"
               - task: KubernetesManifest@1
@@ -197,7 +199,8 @@ stages:
                   $manifest = "${{ parameters.k8sManifest }}"
                   (Get-Content $manifest) `
                     -replace '\$\(ACR_LOGIN_SERVER\)', "$(ACR_LOGIN_SERVER)" `
-                    -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" |
+                    -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" `
+                    -replace 'namespace: apis',        "namespace: prod" |
                   Set-Content $manifest
                 displayName: "Substitute image variables"
               - task: KubernetesManifest@1
