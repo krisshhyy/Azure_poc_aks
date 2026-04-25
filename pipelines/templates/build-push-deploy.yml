@@ -1,9 +1,10 @@
-# Reusable template: test → build → push to ACR → deploy to AKS
+# Reusable template: test → build → push to ACR → deploy to dev/test/prod based on branch
 # Parameters:
-#   apiName       - e.g. api1
-#   projectPath   - relative path to the .csproj folder, e.g. src/Api1
-#   k8sManifest   - path to the K8s deployment yaml
-#   testProject   - (optional) path to test project, e.g. src/Api1.Tests
+#   apiName           - e.g. api1
+#   projectPath       - relative path to the .csproj folder, e.g. src/Api1
+#   k8sManifest       - path to the K8s deployment yaml
+#   testProject       - (optional) path to test project
+#   coverageThreshold - (optional) minimum coverage %, default 60
 
 parameters:
   - name: apiName
@@ -19,19 +20,35 @@ parameters:
     type: number
     default: 60
 
+# Resolve target environment from branch name
+variables:
+  - name: targetNamespace
+    ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+      value: prod
+    ${{ elseif eq(variables['Build.SourceBranchName'], 'test') }}:
+      value: test
+    ${{ else }}:
+      value: dev
+  - name: environmentName
+    ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+      value: "aks-prod"
+    ${{ elseif eq(variables['Build.SourceBranchName'], 'test') }}:
+      value: "aks-test"
+    ${{ else }}:
+      value: "aks-dev"
+
 stages:
 
 # ── Stage 1: Test & Static Analysis ───────────────────────────────────────────
 - stage: Test_${{ parameters.apiName }}
-  displayName: "Test & Lint ${{ parameters.apiName }}"
+  displayName: "🧪 Test & Lint [${{ parameters.apiName }}]"
   jobs:
     - job: RunTests
-      displayName: "Unit tests + format check"
+      displayName: "Unit tests + coverage"
       pool:
         name: mylocalpool
       steps:
         # Static analysis — dotnet format
-        # To enable: replace projectPath with full .csproj path e.g. src/Api5/Api5.csproj
         # - task: DotNetCoreCLI@2
         #   displayName: "dotnet format (style check)"
         #   inputs:
@@ -65,8 +82,6 @@ stages:
               if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             displayName: "dotnet test"
 
-
-          # Publish test results to Azure DevOps (shows pass/fail in pipeline UI)
           - task: PublishTestResults@2
             displayName: "Publish test results"
             condition: always()
@@ -75,19 +90,17 @@ stages:
               testResultsFiles: "$(Agent.TempDirectory)/TestResults/results.trx"
               failTaskOnFailedTests: true
 
-          # Publish code coverage
           - task: PublishCodeCoverageResults@2
             displayName: "Publish code coverage"
             condition: always()
             inputs:
               summaryFileLocation: "$(Build.SourcesDirectory)/coverage.cobertura.xml"
 
-          # Fail the pipeline if coverage drops below threshold
           - powershell: |
               $threshold = ${{ parameters.coverageThreshold }}
               $xmlFile = "$(Build.SourcesDirectory)\coverage.cobertura.xml"
               if (-not (Test-Path $xmlFile)) {
-                Write-Warning "No coverage file found at $xmlFile — skipping threshold check"
+                Write-Warning "No coverage file found — skipping threshold check"
                 exit 0
               }
               $xml = [xml](Get-Content $xmlFile)
@@ -104,7 +117,7 @@ stages:
 
 # ── Stage 2: Build & Push image to ACR ────────────────────────────────────────
 - stage: Build_${{ parameters.apiName }}
-  displayName: "Build & Push ${{ parameters.apiName }}"
+  displayName: "🐳 Build & Push [${{ parameters.apiName }}]"
   dependsOn: Test_${{ parameters.apiName }}
   condition: succeeded()
   jobs:
@@ -125,15 +138,15 @@ stages:
               $(Build.BuildId)
               latest
 
-# ── Stage 3: Deploy to AKS ────────────────────────────────────────────────────
-- stage: Deploy_${{ parameters.apiName }}
-  displayName: "Deploy ${{ parameters.apiName }} to AKS"
+# ── Stage 3: Deploy to Dev ────────────────────────────────────────────────────
+- stage: Deploy_Dev_${{ parameters.apiName }}
+  displayName: "🚀 Deploy to DEV [${{ parameters.apiName }}]"
   dependsOn: Build_${{ parameters.apiName }}
-  condition: succeeded()
+  condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'develop'))
   jobs:
-    - deployment: DeployToAKS
-      displayName: "kubectl apply"
-      environment: $(AKS_ENVIRONMENT_NAME)
+    - deployment: DeployToDev
+      displayName: "Deploy → dev namespace"
+      environment: aks-dev
       pool:
         name: mylocalpool
       strategy:
@@ -141,22 +154,88 @@ stages:
           deploy:
             steps:
               - checkout: self
-
               - powershell: |
                   $manifest = "${{ parameters.k8sManifest }}"
                   (Get-Content $manifest) `
                     -replace '\$\(ACR_LOGIN_SERVER\)', "$(ACR_LOGIN_SERVER)" `
                     -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" |
                   Set-Content $manifest
-                displayName: "Substitute image variables in manifest"
-
+                displayName: "Substitute image variables"
               - task: KubernetesManifest@1
-                displayName: "Apply K8s manifest"
+                displayName: "kubectl apply → dev"
                 inputs:
                   action: deploy
                   connectionType: azureResourceManager
                   azureSubscriptionConnection: $(AZURE_SERVICE_CONNECTION)
                   azureResourceGroup: $(AKS_RESOURCE_GROUP)
                   kubernetesCluster: $(AKS_CLUSTER_NAME)
-                  namespace: apis
+                  namespace: dev
+                  manifests: ${{ parameters.k8sManifest }}
+
+# ── Stage 4: Deploy to Test ───────────────────────────────────────────────────
+- stage: Deploy_Test_${{ parameters.apiName }}
+  displayName: "🧪 Deploy to TEST [${{ parameters.apiName }}]"
+  dependsOn: Build_${{ parameters.apiName }}
+  condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'test'))
+  jobs:
+    - deployment: DeployToTest
+      displayName: "Deploy → test namespace"
+      environment: aks-test
+      pool:
+        name: mylocalpool
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - checkout: self
+              - powershell: |
+                  $manifest = "${{ parameters.k8sManifest }}"
+                  (Get-Content $manifest) `
+                    -replace '\$\(ACR_LOGIN_SERVER\)', "$(ACR_LOGIN_SERVER)" `
+                    -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" |
+                  Set-Content $manifest
+                displayName: "Substitute image variables"
+              - task: KubernetesManifest@1
+                displayName: "kubectl apply → test"
+                inputs:
+                  action: deploy
+                  connectionType: azureResourceManager
+                  azureSubscriptionConnection: $(AZURE_SERVICE_CONNECTION)
+                  azureResourceGroup: $(AKS_RESOURCE_GROUP)
+                  kubernetesCluster: $(AKS_CLUSTER_NAME)
+                  namespace: test
+                  manifests: ${{ parameters.k8sManifest }}
+
+# ── Stage 5: Deploy to Prod ───────────────────────────────────────────────────
+- stage: Deploy_Prod_${{ parameters.apiName }}
+  displayName: "🏭 Deploy to PROD [${{ parameters.apiName }}]"
+  dependsOn: Build_${{ parameters.apiName }}
+  condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'main'))
+  jobs:
+    - deployment: DeployToProd
+      displayName: "Deploy → prod namespace"
+      environment: aks-prod        # add approval gate on this environment in Azure DevOps
+      pool:
+        name: mylocalpool
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+              - checkout: self
+              - powershell: |
+                  $manifest = "${{ parameters.k8sManifest }}"
+                  (Get-Content $manifest) `
+                    -replace '\$\(ACR_LOGIN_SERVER\)', "$(ACR_LOGIN_SERVER)" `
+                    -replace '\$\(IMAGE_TAG\)',        "$(Build.BuildId)" |
+                  Set-Content $manifest
+                displayName: "Substitute image variables"
+              - task: KubernetesManifest@1
+                displayName: "kubectl apply → prod"
+                inputs:
+                  action: deploy
+                  connectionType: azureResourceManager
+                  azureSubscriptionConnection: $(AZURE_SERVICE_CONNECTION)
+                  azureResourceGroup: $(AKS_RESOURCE_GROUP)
+                  kubernetesCluster: $(AKS_CLUSTER_NAME)
+                  namespace: prod
                   manifests: ${{ parameters.k8sManifest }}
