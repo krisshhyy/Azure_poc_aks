@@ -11,6 +11,8 @@ crash.log
 **/bin/
 **/obj/
 *.user
+coverage*.xml
+coverage-*.xml
 
 # Secrets
 *.pem
